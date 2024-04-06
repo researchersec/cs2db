@@ -1,0 +1,30 @@
+name: Run conn.py Script
+
+on: 
+  workflow_dispatch:  # Allows you to manually trigger the workflow from GitHub UI
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install mysql-connector-python  # Or psycopg2 if it's PostgreSQL, or any other dependencies
+
+    - name: Run script
+      run: python conn.py
+      env:
+        DB_URL: ${{ secrets.DB_URL }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
