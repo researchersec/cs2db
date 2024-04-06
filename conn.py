@@ -27,13 +27,11 @@ def get_db_connection():
         return None
 
 def create_table(conn):
-    """Creates the pricing_data table if it doesn't exist."""
+    """Creates the pricing_data table without auctionHouseId and petSpeciesId."""
     create_table_sql = """
     CREATE TABLE IF NOT EXISTS pricing_data (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        auctionHouseId INT,
         itemId INT,
-        petSpeciesId INT,
         minBuyout INT,
         quantity INT,
         marketValue INT,
@@ -49,30 +47,29 @@ def create_table(conn):
     print("Table checked/created successfully.")
 
 def fetch_and_insert_data(conn):
-    """Fetches pricing data from a URL and inserts it into the database."""
+    """Fetches pricing data and inserts it into the database without auctionHouseId and petSpeciesId."""
     data_url = "https://raw.githubusercontent.com/researchersec/lonewolf/main/prices/latest.json"
     response = requests.get(data_url)
     pricing_data = response.json()['pricing_data']
 
     insert_sql = """
     INSERT INTO pricing_data 
-    (auctionHouseId, itemId, petSpeciesId, minBuyout, quantity, marketValue, historical, numAuctions) 
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    (itemId, minBuyout, quantity, marketValue, historical, numAuctions) 
+    VALUES (%s, %s, %s, %s, %s, %s)
     """
     cursor = conn.cursor()
 
     for item in pricing_data:
         data_to_insert = (
-            item.get('auctionHouseId'), 
-            item.get('itemId'), 
-            item.get('petSpeciesId'), 
-            item.get('minBuyout'), 
-            item.get('quantity'), 
-            item.get('marketValue'), 
-            item.get('historical'), 
+            item.get('itemId'),
+            item.get('minBuyout'),
+            item.get('quantity'),
+            item.get('marketValue'),
+            item.get('historical'),
             item.get('numAuctions')
         )
         cursor.execute(insert_sql, data_to_insert)
+        print(f"inserting {item}")
 
     conn.commit()
     cursor.close()
