@@ -47,7 +47,7 @@ def create_table(conn):
     print("Table checked/created successfully.")
 
 def fetch_and_insert_data(conn):
-    """Fetches pricing data and inserts it into the database without auctionHouseId and petSpeciesId."""
+    """Fetches pricing data and inserts it using batch operation."""
     data_url = "https://raw.githubusercontent.com/researchersec/lonewolf/main/prices/latest.json"
     response = requests.get(data_url)
     pricing_data = response.json()['pricing_data']
@@ -57,10 +57,10 @@ def fetch_and_insert_data(conn):
     (itemId, minBuyout, quantity, marketValue, historical, numAuctions) 
     VALUES (%s, %s, %s, %s, %s, %s)
     """
-    cursor = conn.cursor()
 
-    for item in pricing_data:
-        data_to_insert = (
+    # Prepare the data to insert
+    data_to_insert = [
+        (
             item.get('itemId'),
             item.get('minBuyout'),
             item.get('quantity'),
@@ -68,12 +68,17 @@ def fetch_and_insert_data(conn):
             item.get('historical'),
             item.get('numAuctions')
         )
-        cursor.execute(insert_sql, data_to_insert)
-        print(f"inserting {item}")
+        for item in pricing_data
+    ]
+
+    cursor = conn.cursor()
+
+    # Use executemany to perform batch insertion
+    cursor.executemany(insert_sql, data_to_insert)
 
     conn.commit()
     cursor.close()
-    print(f"{len(pricing_data)} records inserted successfully.")
+    print(f"{len(data_to_insert)} records inserted successfully.")
 
 def main():
     conn = get_db_connection()
@@ -81,6 +86,7 @@ def main():
         create_table(conn)
         fetch_and_insert_data(conn)
         conn.close()
+        print("Process completed successfully.")
 
 if __name__ == "__main__":
     main()
