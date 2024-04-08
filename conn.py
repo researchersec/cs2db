@@ -80,25 +80,45 @@ def fetch_and_insert_data(conn):
     cursor.close()
     print(f"{len(data_to_insert)} records inserted successfully.")
 
-def benchmark_database(conn):
-    """Performs a benchmark query to count occurrences of each itemId."""
-    query = "SELECT itemId, COUNT(*) as count FROM pricing_data GROUP BY itemId;"
+def benchmark_price_changes(conn):
+    """Benchmarks how much the minBuyout prices changed from timestamp to timestamp."""
+    query = """
+    SELECT
+        current.itemId,
+        current.minBuyout AS current_price,
+        previous.minBuyout AS previous_price,
+        current.timestamp AS current_timestamp,
+        previous.timestamp AS previous_timestamp
+    FROM
+        pricing_data AS current
+    INNER JOIN
+        pricing_data AS previous ON current.itemId = previous.itemId
+    WHERE
+        previous.timestamp < current.timestamp
+    GROUP BY
+        current.itemId, current.timestamp
+    HAVING
+        current.timestamp = MAX(previous.timestamp)
+    ORDER BY
+        current.itemId, current.timestamp;
+    """
     cursor = conn.cursor(dictionary=True)
     cursor.execute(query)
-    
-    # Fetch and print the benchmark results
+
     results = cursor.fetchall()
     for row in results:
-        print(f"ItemId {row['itemId']} has {row['count']} entries.")
-    
+        price_change = row['current_price'] - row['previous_price']
+        print(f"ItemId {row['itemId']} changed by {price_change} from {row['previous_timestamp']} to {row['current_timestamp']}.")
+
     cursor.close()
+
     
 def main():
     conn = get_db_connection()
     if conn:
         create_table(conn)
         fetch_and_insert_data(conn)
-        benchmark_database(conn)
+        benchmark_price_changes(conn)
         conn.close()
         print("Process completed successfully.")
 
