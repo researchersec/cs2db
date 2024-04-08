@@ -80,11 +80,25 @@ def fetch_and_insert_data(conn):
     cursor.close()
     print(f"{len(data_to_insert)} records inserted successfully.")
 
+def benchmark_database(conn):
+    """Performs a benchmark query to count occurrences of each itemId."""
+    query = "SELECT itemId, COUNT(*) as count FROM pricing_data GROUP BY itemId;"
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(query)
+    
+    # Fetch and print the benchmark results
+    results = cursor.fetchall()
+    for row in results:
+        print(f"ItemId {row['itemId']} has {row['count']} entries.")
+    
+    cursor.close()
+    
 def main():
     conn = get_db_connection()
     if conn:
         create_table(conn)
         fetch_and_insert_data(conn)
+        benchmark_database(conn)
         conn.close()
         print("Process completed successfully.")
 
