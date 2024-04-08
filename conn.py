@@ -84,23 +84,28 @@ def benchmark_price_changes(conn):
     """Benchmarks how much the minBuyout prices changed from timestamp to timestamp."""
     query = """
     SELECT
-        current.itemId,
-        current.minBuyout AS current_price,
-        previous.minBuyout AS previous_price,
-        current.timestamp AS current_timestamp,
-        previous.timestamp AS previous_timestamp
+        curr.itemId,
+        curr.minBuyout AS current_price,
+        prev.minBuyout AS previous_price,
+        curr.timestamp AS current_ts,
+        prev.timestamp AS previous_ts
     FROM
-        pricing_data AS current
+        pricing_data curr
     INNER JOIN
-        pricing_data AS previous ON current.itemId = previous.itemId
+        pricing_data prev ON curr.itemId = prev.itemId AND prev.timestamp < curr.timestamp
+    INNER JOIN (
+        SELECT itemId, MAX(timestamp) AS max_ts
+        FROM pricing_data
+        GROUP BY itemId
+    ) grouped_data ON curr.itemId = grouped_data.itemId AND curr.timestamp = grouped_data.max_ts
     WHERE
-        previous.timestamp < current.timestamp
-    GROUP BY
-        current.itemId, current.timestamp
-    HAVING
-        current.timestamp = MAX(previous.timestamp)
+        prev.timestamp = (
+            SELECT MAX(timestamp)
+            FROM pricing_data
+            WHERE itemId = curr.itemId AND timestamp < curr.timestamp
+        )
     ORDER BY
-        current.itemId, current.timestamp;
+        curr.itemId, curr.timestamp;
     """
     cursor = conn.cursor(dictionary=True)
     cursor.execute(query)
@@ -108,10 +113,9 @@ def benchmark_price_changes(conn):
     results = cursor.fetchall()
     for row in results:
         price_change = row['current_price'] - row['previous_price']
-        print(f"ItemId {row['itemId']} changed by {price_change} from {row['previous_timestamp']} to {row['current_timestamp']}.")
+        print(f"ItemId {row['itemId']} changed by {price_change} from {row['previous_ts']} to {row['current_ts']}.")
 
     cursor.close()
-
     
 def main():
     conn = get_db_connection()
